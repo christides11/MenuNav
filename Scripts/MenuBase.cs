@@ -7,8 +7,6 @@ namespace CT.MenuNav
     {
         public IMenuHandler MenuHandler { get; set; } = null;
         
-        [SerializeField] protected List<IMenu> history = new();
-
         public virtual void Open(MenuDirection direction, IMenuHandler menuHandler)
         {
             MenuHandler = menuHandler;

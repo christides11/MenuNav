@@ -5,7 +5,15 @@ namespace CT.MenuNav
 {
     public class MenuHandlerAndMenuBase : MenuBase, IMenuHandler
     {
-        protected List<MenuBase> menus = new();
+        protected List<IMenu> menus = new();
+        protected List<IMenu> history = new();
+        protected IMenu NextMenu = null;
+
+        IMenu IMenuHandler.NextMenu
+        {
+            get => NextMenu;
+            set => NextMenu = value;
+        }
 
         public override void Open(MenuDirection direction, IMenuHandler menuHandler)
         {
@@ -23,39 +31,50 @@ namespace CT.MenuNav
         {
             foreach (var m in menus)
             {
-                m.gameObject.SetActive(false);
+                m.TryClose(MenuDirection.BACKWARDS);
             }
 
             history.Clear();
-            Forward(menuToForwardTo, false);
+            if (menuToForwardTo != null) Forward(menuToForwardTo, false);
         }
 
         public virtual bool Forward(IMenu menu, bool autoClose = true)
         {
-            EventSystem.current.SetSelectedGameObject(null);
+            NextMenu = menu;
+            EventSystem.current?.SetSelectedGameObject(null);
             if (autoClose) GetCurrentMenu()?.TryClose(MenuDirection.FORWARDS, false);
-            menu.MenuHandler = this;
-            menu.Open(MenuDirection.FORWARDS, this);
+            if (menu != null)
+            {
+                menu.MenuHandler = this;
+                menu.Open(MenuDirection.FORWARDS, this);
+            }
+
             history.Add(menu);
             return true;
         }
 
         public virtual bool Back()
         {
-            if (history.Count == 0) return true;
-            bool result = GetCurrentMenu().TryClose(MenuDirection.BACKWARDS);
-            if (result == true)
-            {
-                history.RemoveAt(history.Count - 1);
-                GetCurrentMenu()?.Open(MenuDirection.BACKWARDS, this);
-            }
+            if (history.Count <= 1) return false;
+            var currMenu = GetCurrentMenu();
+            var result = currMenu == null || currMenu.TryClose(MenuDirection.BACKWARDS);
 
-            return result;
+            if (result == false) return false;
+
+            history.RemoveAt(history.Count - 1);
+            GetCurrentMenu()?.Open(MenuDirection.BACKWARDS, this);
+            return true;
         }
 
         public virtual List<IMenu> GetHistory()
         {
             return history;
+        }
+
+        public virtual IMenu GetPreviousMenu()
+        {
+            if (history.Count == 0) return null;
+            return history[^1];
         }
 
         public virtual IMenu GetCurrentMenu()
