@@ -29,11 +29,10 @@ namespace CT.MenuNav
 
         public virtual void ResetAndForwardTo(IMenu menuToForwardTo)
         {
-            foreach (var m in menus)
+            for (int i = history.Count - 1; i >= 0; i--)
             {
-                m.TryClose(MenuDirection.BACKWARDS);
+                if (history[i] != null) history[i].TryClose(MenuDirection.BACKWARDS, forceClose: true);
             }
-
             history.Clear();
             if (menuToForwardTo != null) Forward(menuToForwardTo, false);
         }
