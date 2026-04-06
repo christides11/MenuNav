@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/christides11/MenuNav/compare/v1.1.0...v1.1.1) (2026-04-06)
+
+
+### Bug Fixes
+
+* Fixed ResetAndForwardTo ([e3ecb6c](https://github.com/christides11/MenuNav/commit/e3ecb6cd158cd32bb3ebb09ee8cd3989c97ab918))
+
 # [1.1.0](https://github.com/christides11/MenuNav/compare/v1.0.0...v1.1.0) (2026-04-05)
 
 

@@ -1,6 +1,6 @@
 {
 	"name": "com.christides.menunav",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"displayName": "MenuNav",
 	"description": "Scripts for handling menu navigation.",
 	"unity": "6000.3",
