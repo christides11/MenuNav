@@ -39,7 +39,8 @@ namespace CT.MenuNav
         protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
         protected List<MenuPageSection> SectionsToReset = new List<MenuPageSection>();
         [SerializeField] protected MenuPageState pageState;
-
+        public MenuManager currentManager;
+        
         public int PageCount { get; protected set; }
 
         public virtual async UniTask<bool> TryOpenAsync(MenuNavDirection direction, int pageCount)
@@ -106,7 +107,7 @@ namespace CT.MenuNav
 
             Breadcrumb.Push(section);
 
-            var enterResult = await section.EnterSection(MenuNavDirection.Advance);
+            var enterResult = await section.TryEnterSection(MenuNavDirection.Advance);
             if (enterResult == false)
             {
                 // TODO: Re enter old section.
@@ -138,7 +139,7 @@ namespace CT.MenuNav
             if (Breadcrumb.Count > 0)
             {
                 MenuPageSection previousSection = Breadcrumb.Peek();
-                var returnResult = await previousSection.EnterSection(MenuNavDirection.Back);
+                var returnResult = await previousSection.TryEnterSection(MenuNavDirection.Back);
                 return returnResult;
             }
 

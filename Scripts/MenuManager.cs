@@ -11,9 +11,13 @@ namespace CT.MenuNav
         
         public MenuPage startingPage;
         protected Stack<MenuPage> Breadcrumb = new Stack<MenuPage>();
-
+        protected List<MenuPage> assignedPages = new List<MenuPage>();
+        
         protected virtual async void Awake()
         {
+            foreach(var page in assignedPages)
+                page.ForceClose();
+            
             if(startingPage != null)
                 _ = TryAdvancePage(startingPage);
         }
@@ -54,6 +58,7 @@ namespace CT.MenuNav
                 return false;
             
             Breadcrumb.Push(nextPage);
+            nextPage.currentManager = this;
             OnAdvancePage?.Invoke();
             return true;
         }
@@ -69,8 +74,23 @@ namespace CT.MenuNav
                 if (exitResult == false)
                     return false;
             }
-
             Breadcrumb.Pop();
+
+            if (Breadcrumb.Count == 0)
+            {
+                OnBackPage?.Invoke();
+                return true;
+            }
+
+            var returnToMenu = Breadcrumb.Peek();
+            if (returnToMenu != null)
+            {
+                var returnResult = await returnToMenu.TryOpenAsync(MenuNavDirection.Back, GetPageCount());
+                if (returnResult == false)
+                    return false;
+                returnToMenu.currentManager = this;
+            }
+            
             OnBackPage?.Invoke();
             return true;
         }
@@ -86,12 +106,20 @@ namespace CT.MenuNav
                 if (exitResult == false)
                     return false;
             }
-
             Breadcrumb.Pop();
+
+            if (swapToPage == null)
+            {
+                Breadcrumb.Push(null);
+                OnSwapPage?.Invoke();
+                return true;
+            }
+            
             var openResult = await swapToPage.TryOpenAsync(MenuNavDirection.Advance, GetPageCount());
             if (openResult == false)
                 return false;
-            
+
+            swapToPage.currentManager = this;
             Breadcrumb.Push(swapToPage);
             OnSwapPage?.Invoke();
             return true;
