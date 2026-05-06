@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/christides11/MenuNav/compare/v1.1.1...v2.0.0) (2026-05-06)
+
+
+### Features
+
+* Rewrite ([c269847](https://github.com/christides11/MenuNav/commit/c2698479ef7640135a72f9e4f3cbada955f463c9))
+
+
+### BREAKING CHANGES
+
+* Rewrote based on https://github.com/jglasspilon/Refantazio-Menu-Remake
+
 ## [1.1.1](https://github.com/christides11/MenuNav/compare/v1.1.0...v1.1.1) (2026-04-06)
 
 
