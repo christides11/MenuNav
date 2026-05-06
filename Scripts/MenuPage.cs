@@ -50,7 +50,7 @@ namespace CT.MenuNav
             gameObject.SetActive(true);
             PageCount = pageCount;
 
-            await TryAdvanceSection(defaultSection);
+            if(Breadcrumb.Count == 0) await TryAdvanceSection(defaultSection);
 
             PageState = MenuPageState.Opened;
             return true;
@@ -65,19 +65,12 @@ namespace CT.MenuNav
             return true;
         }
 
-        public virtual void ForceClose()
-        {
-            ResetSections();
-            gameObject.SetActive(false);
-            PageState = MenuPageState.Closed;
-        }
-
         public virtual void ResetPage()
         {
             while (Breadcrumb.Count > 0)
             {
                 MenuPageSection closing = Breadcrumb.Pop();
-                closing.ForceExitSection(MenuNavDirection.Reset);
+                closing.ForceExitSection(MenuNavDirection.Back_FORCED);
                 closing.ResetSection();
             }
         }

@@ -5,8 +5,9 @@ namespace CT.MenuNav
     [Serializable]
     public enum MenuNavDirection
     {
-        Reset,
+        Back,
         Advance,
-        Back
+        Back_FORCED,
+        Advance_FORCED
     }
 }

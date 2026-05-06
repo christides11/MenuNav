@@ -15,8 +15,8 @@ namespace CT.MenuNav
         
         protected virtual async void Awake()
         {
-            foreach(var page in assignedPages)
-                page.ForceClose();
+            foreach (var page in assignedPages)
+                _ = page.TryCloseAsync(MenuNavDirection.Back_FORCED);
             
             if(startingPage != null)
                 _ = TryAdvancePage(startingPage);
@@ -32,7 +32,7 @@ namespace CT.MenuNav
             while (Breadcrumb.Count > 0)
             {
                 var page = Breadcrumb.Pop();
-                page?.ForceClose();
+                _ = page?.TryCloseAsync(MenuNavDirection.Back_FORCED);
             }
         }
         
