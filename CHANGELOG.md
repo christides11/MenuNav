@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/christides11/MenuNav/compare/v2.1.0...v2.1.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* Changes ([4db0417](https://github.com/christides11/MenuNav/commit/4db041715782f4daea3ba19d837bfc2db01c555c))
+
 # [2.1.0](https://github.com/christides11/MenuNav/compare/v2.0.0...v2.1.0) (2026-05-06)
 
 
