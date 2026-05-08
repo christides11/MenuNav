@@ -5,7 +5,7 @@ using UnityEngine.Events;
 
 namespace CT.MenuNav
 {
-    public abstract class MenuPageSection : MonoBehaviour
+    public class MenuPageSection : MonoBehaviour
     {
         public MenuPageSectionState SectionState
         {

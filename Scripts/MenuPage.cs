@@ -37,7 +37,7 @@ namespace CT.MenuNav
         public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed;
         
         [NonSerialized] protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
-        [NonSerialized] protected List<MenuPageSection> SectionsToReset = new List<MenuPageSection>();
+        [NonSerialized] protected HashSet<MenuPageSection> SectionsToReset = new HashSet<MenuPageSection>();
         [SerializeField] protected MenuPageState pageState;
         [NonSerialized] public MenuManager currentManager;
         
@@ -80,31 +80,38 @@ namespace CT.MenuNav
         }
 
         // Section Navigation
-        public virtual async UniTask<bool> TryAdvanceSection(MenuPageSection section)
+        public virtual async UniTask<bool> TryAdvanceSection(MenuPageSection nextSection)
         {
-            if (section == null)
-                return false;
-
             if (Breadcrumb.Count > 0)
             {
-                var exitResult = await Breadcrumb.Peek().TryExitSection(MenuNavDirection.Advance);
-                if (exitResult == false)
-                    return false;
+                var currentSection = Breadcrumb.Peek();
+                if (currentSection != null)
+                {
+                    var exitResult = await currentSection.TryExitSection(MenuNavDirection.Advance);
+                    if (exitResult == false)
+                        return false;
+                }
             }
 
-            Breadcrumb.Push(section);
-
-            var enterResult = await section.TryEnterSection(MenuNavDirection.Advance);
+            if (nextSection == null)
+            {
+                Breadcrumb.Push(null);
+                return true;
+            }
+            
+            var enterResult = await nextSection.TryEnterSection(MenuNavDirection.Advance);
             if (enterResult == false)
             {
-                // TODO: Re enter old section.
+                var oldSection = Breadcrumb.Peek();
+                if (oldSection != null)
+                {
+                    await oldSection.TryEnterSection(MenuNavDirection.Back_FORCED);
+                }
                 return false;
             }
-
-            if (SectionsToReset.Contains(section))
-                return true;
-
-            SectionsToReset.Add(section);
+            Breadcrumb.Push(nextSection);
+            
+            SectionsToReset.Add(nextSection);
             return true;
         }
 
