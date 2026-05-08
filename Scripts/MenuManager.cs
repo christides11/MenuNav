@@ -10,8 +10,8 @@ namespace CT.MenuNav
         public event Action OnAdvancePage, OnBackPage, OnSwapPage;
         
         public MenuPage startingPage;
-        protected Stack<MenuPage> Breadcrumb = new Stack<MenuPage>();
-        protected List<MenuPage> assignedPages = new List<MenuPage>();
+        [NonSerialized] protected Stack<MenuPage> Breadcrumb = new Stack<MenuPage>();
+        [NonSerialized] protected List<MenuPage> assignedPages = new List<MenuPage>();
         
         protected virtual async void Awake()
         {
@@ -19,7 +19,7 @@ namespace CT.MenuNav
                 _ = page.TryCloseAsync(MenuNavDirection.Back_FORCED);
             
             if(startingPage != null)
-                _ = TryAdvancePage(startingPage);
+                _ = TryForwardPage(startingPage);
         }
 
         protected virtual void OnDestroy()
@@ -36,7 +36,7 @@ namespace CT.MenuNav
             }
         }
         
-        public async UniTask<bool> TryAdvancePage(MenuPage nextPage)
+        public virtual async UniTask<bool> TryForwardPage(MenuPage nextPage)
         {
             if (Breadcrumb.Count > 0)
             {
@@ -53,17 +53,20 @@ namespace CT.MenuNav
                 return true;
             }
             
+            nextPage.currentManager = this;
             var openResult = await nextPage.TryOpenAsync(MenuNavDirection.Advance, GetPageCount());
             if (openResult == false)
+            {
+                nextPage.currentManager = null;
                 return false;
-            
+            }
+
             Breadcrumb.Push(nextPage);
-            nextPage.currentManager = this;
             OnAdvancePage?.Invoke();
             return true;
         }
 
-        public async UniTask<bool> TryBackPage()
+        public virtual async UniTask<bool> TryBackPage()
         {
             if (Breadcrumb.Count == 0)
                 return false;
@@ -85,20 +88,23 @@ namespace CT.MenuNav
             var returnToMenu = Breadcrumb.Peek();
             if (returnToMenu != null)
             {
+                returnToMenu.currentManager = this;
                 var returnResult = await returnToMenu.TryOpenAsync(MenuNavDirection.Back, GetPageCount());
                 if (returnResult == false)
+                {
+                    returnToMenu.currentManager = null;
                     return false;
-                returnToMenu.currentManager = this;
+                }
             }
             
             OnBackPage?.Invoke();
             return true;
         }
 
-        public async UniTask<bool> TrySwapPage(MenuPage swapToPage)
+        public virtual async UniTask<bool> TrySwapPage(MenuPage swapToPage)
         {
             if (Breadcrumb.Count == 0)
-                return await TryAdvancePage(swapToPage);
+                return await TryForwardPage(swapToPage);
 
             if (Breadcrumb.TryPeek(out MenuPage currentPage))
             {
@@ -115,26 +121,52 @@ namespace CT.MenuNav
                 return true;
             }
             
+            swapToPage.currentManager = this;
             var openResult = await swapToPage.TryOpenAsync(MenuNavDirection.Advance, GetPageCount());
             if (openResult == false)
+            {
+                swapToPage.currentManager = null;
                 return false;
-
-            swapToPage.currentManager = this;
+            }
+            
             Breadcrumb.Push(swapToPage);
             OnSwapPage?.Invoke();
             return true;
         }
 
-        public MenuPage GetCurrentPage()
+        public virtual MenuPage GetCurrentPage()
         {
             if (Breadcrumb.Count == 0)
                 return null;
             return Breadcrumb.Peek();
         }
 
-        public int GetPageCount()
+        public virtual int GetPageCount()
         {
             return Breadcrumb.Count;
+        }
+
+        public virtual void PrintBreadcrumbs()
+        {
+            string output = "Menu Breadcrumbs\n";
+            var breadcrumbList = Breadcrumb.ToArray();
+
+            foreach (var breadcrumb in breadcrumbList)
+            {
+                if (breadcrumb == null) output += $"Null\n";
+                else output += $"{breadcrumb.GetType().Name}\n";
+            }
+            Debug.Log(output);
+        }
+
+        public virtual void SetCurrentSelectedGameobject(GameObject selectedGameObject, int playerID = 0)
+        {
+            
+        }
+
+        public virtual GameObject GetCurrentSelectedGameObject(int playerID = 0)
+        {
+            return null;
         }
     }
 }

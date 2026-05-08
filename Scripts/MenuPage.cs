@@ -32,26 +32,20 @@ namespace CT.MenuNav
             }
         }
 
-        public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed;
-
-        [SerializeField] protected MenuPageSection defaultSection;
-
-        protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
-        protected List<MenuPageSection> SectionsToReset = new List<MenuPageSection>();
-        [SerializeField] protected MenuPageState pageState;
-        public MenuManager currentManager;
-        
         public int PageCount { get; protected set; }
-
+        
+        public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed;
+        
+        [NonSerialized] protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
+        [NonSerialized] protected List<MenuPageSection> SectionsToReset = new List<MenuPageSection>();
+        [SerializeField] protected MenuPageState pageState;
+        [NonSerialized] public MenuManager currentManager;
+        
         public virtual async UniTask<bool> TryOpenAsync(MenuNavDirection direction, int pageCount)
         {
             PageState = MenuPageState.Opening;
-
             gameObject.SetActive(true);
             PageCount = pageCount;
-
-            if(Breadcrumb.Count == 0) await TryAdvanceSection(defaultSection);
-
             PageState = MenuPageState.Opened;
             return true;
         }
