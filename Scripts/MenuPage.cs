@@ -37,7 +37,7 @@ namespace CT.MenuNav
         public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed;
         
         [NonSerialized] protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
-        [NonSerialized] protected HashSet<MenuPageSection> SectionsToReset = new HashSet<MenuPageSection>();
+        [NonSerialized] protected HashSet<MenuPageSection> AssignedSections = new HashSet<MenuPageSection>();
         [SerializeField] protected MenuPageState pageState;
         [NonSerialized] public MenuManager currentManager;
         
@@ -53,7 +53,7 @@ namespace CT.MenuNav
         public virtual async UniTask<bool> TryCloseAsync(MenuNavDirection direction)
         {
             PageState = MenuPageState.Closing;
-            ResetSections();
+            ResetBreadcrumbSections();
             gameObject.SetActive(false);
             PageState = MenuPageState.Closed;
             return true;
@@ -64,19 +64,29 @@ namespace CT.MenuNav
             while (Breadcrumb.Count > 0)
             {
                 MenuPageSection closing = Breadcrumb.Pop();
-                closing.ForceExitSection(MenuNavDirection.Back_FORCED);
+                _ = closing.TryExitSection(MenuNavDirection.Back_FORCED);
                 closing.ResetSection();
             }
         }
 
-        protected virtual void ResetSections()
+        public virtual void ExitAllAssignedSections()
         {
-            foreach (MenuPageSection section in SectionsToReset)
+            foreach(var section in AssignedSections)
+                section.TryExitSection(MenuNavDirection.Back_FORCED);
+        }
+
+        public virtual void ResetAllAssignedSections()
+        {
+            foreach(var section in AssignedSections)
+                section.ResetSection();
+        }
+
+        public virtual void ResetBreadcrumbSections()
+        {
+            foreach (MenuPageSection section in Breadcrumb)
             {
                 section.ResetSection();
             }
-
-            SectionsToReset.Clear();
         }
 
         // Section Navigation
@@ -98,20 +108,20 @@ namespace CT.MenuNav
                 Breadcrumb.Push(null);
                 return true;
             }
-            
+
+            nextSection.assignedPage = this;
             var enterResult = await nextSection.TryEnterSection(MenuNavDirection.Advance);
             if (enterResult == false)
             {
                 var oldSection = Breadcrumb.Peek();
                 if (oldSection != null)
                 {
+                    oldSection.assignedPage = this;
                     await oldSection.TryEnterSection(MenuNavDirection.Back_FORCED);
                 }
                 return false;
             }
             Breadcrumb.Push(nextSection);
-            
-            SectionsToReset.Add(nextSection);
             return true;
         }
 
@@ -121,20 +131,26 @@ namespace CT.MenuNav
                 return false;
 
             MenuPageSection currentSection = Breadcrumb.Peek();
-            var exitResult = await currentSection.TryExitSection(MenuNavDirection.Back);
-            if (exitResult == false)
+            if (currentSection != null)
             {
-                return false;
+                var exitResult = await currentSection.TryExitSection(MenuNavDirection.Back);
+                if (exitResult == false)
+                {
+                    return false;
+                }
             }
 
             Breadcrumb.Pop();
-            SectionsToReset.Remove(currentSection);
 
             if (Breadcrumb.Count > 0)
             {
                 MenuPageSection previousSection = Breadcrumb.Peek();
-                var returnResult = await previousSection.TryEnterSection(MenuNavDirection.Back);
-                return returnResult;
+                if (previousSection != null)
+                {
+                    previousSection.assignedPage = this;
+                    var returnResult = await previousSection.TryEnterSection(MenuNavDirection.Back);
+                    return returnResult;
+                }
             }
 
             return true;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 using Cysharp.Threading.Tasks;
 
 namespace CT.MenuNav
@@ -149,22 +150,23 @@ namespace CT.MenuNav
         public virtual void PrintBreadcrumbs()
         {
             string output = "Menu Breadcrumbs\n";
-            var breadcrumbList = Breadcrumb.ToArray();
+            var breadcrumbList = Breadcrumb.ToArray().Reverse();
 
             foreach (var breadcrumb in breadcrumbList)
             {
                 if (breadcrumb == null) output += $"Null\n";
                 else output += $"{breadcrumb.GetType().Name}\n";
             }
+            
             Debug.Log(output);
         }
 
-        public virtual void SetCurrentSelectedGameobject(GameObject selectedGameObject, int playerID = 0)
+        public virtual void SetCurrentSelectedGameObject(GameObject selectedGameObject, int playerID = -1)
         {
             
         }
 
-        public virtual GameObject GetCurrentSelectedGameObject(int playerID = 0)
+        public virtual GameObject GetCurrentSelectedGameObject(int playerID = -1)
         {
             return null;
         }

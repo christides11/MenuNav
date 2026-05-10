@@ -33,31 +33,22 @@ namespace CT.MenuNav
         
         public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed, OnReset;
         [SerializeField] private MenuPageSectionState sectionState = MenuPageSectionState.Closed;
-
+        [NonSerialized] public MenuPage assignedPage;
+        
         public virtual UniTask<bool> TryEnterSection(MenuNavDirection direction)
         {
             SectionState = MenuPageSectionState.Opening;
             SectionState = MenuPageSectionState.Opened;
             return UniTask.FromResult(true);
         }
-
-        public virtual void ForceEnterSection(MenuNavDirection direction)
-        {
-            SectionState = MenuPageSectionState.Opened;
-        }
-
+        
         public virtual UniTask<bool> TryExitSection(MenuNavDirection direction)
         {
             SectionState = MenuPageSectionState.Closing;
             SectionState = MenuPageSectionState.Closed;
             return UniTask.FromResult(true);
         }
-
-        public virtual void ForceExitSection(MenuNavDirection direction)
-        {
-            SectionState = MenuPageSectionState.Closed;
-        }
-
+        
         public virtual void ResetSection()
         {
             OnReset?.Invoke();
