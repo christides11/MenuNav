@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/christides11/MenuNav/compare/v2.3.1...v2.4.0) (2026-05-19)
+
+
+### Features
+
+* non-async methods, breadcrumb control ([8f7bbfe](https://github.com/christides11/MenuNav/commit/8f7bbfe00e8c72e89eb6a524db866a9fa4a8084f))
+
 ## [2.3.1](https://github.com/christides11/MenuNav/compare/v2.3.0...v2.3.1) (2026-05-10)
 
 
