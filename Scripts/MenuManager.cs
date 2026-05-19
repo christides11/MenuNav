@@ -20,7 +20,7 @@ namespace CT.MenuNav
                 _ = page.TryCloseAsync(MenuNavDirection.Back_FORCED);
             
             if(startingPage != null)
-                _ = TryForwardPage(startingPage);
+                _ = TryForwardPageAsync(startingPage);
         }
 
         protected virtual void OnDestroy()
@@ -33,11 +33,69 @@ namespace CT.MenuNav
             while (Breadcrumb.Count > 0)
             {
                 var page = Breadcrumb.Pop();
-                _ = page?.TryCloseAsync(MenuNavDirection.Back_FORCED);
+                page?.TryClose(MenuNavDirection.Back_FORCED);
             }
         }
+
+        public virtual bool SetBreadcrumbs(List<MenuPage> breadcrumbs)
+        {
+            BackOutAllPages(pageCountToLeaveOpen: 0);
+
+            foreach (var page in breadcrumbs)
+            {
+                if (page != null)
+                {
+                    var openResult = page.TryOpen(MenuNavDirection.Advance_FORCED, GetPageCount());
+                    if (openResult == false) return false;
+                }
+                Breadcrumb.Push(page);
+            }
+            return true;
+        }
         
-        public virtual async UniTask<bool> TryForwardPage(MenuPage nextPage)
+        public virtual async UniTask<bool> SetBreadcrumbsAsync(List<MenuPage> breadcrumbs)
+        {
+            await BackOutAllPagesAsync(pageCountToLeaveOpen: 0);
+
+            foreach (var page in breadcrumbs)
+            {
+                if (page != null)
+                {
+                    var openResult = await page.TryOpenAsync(MenuNavDirection.Advance_FORCED, GetPageCount());
+                    if (openResult == false) return false;
+                }
+                Breadcrumb.Push(page);
+            }
+            return true;
+        }
+
+        public virtual async UniTask<bool> BackOutAllPagesAsync(int pageCountToLeaveOpen = 0)
+        {
+            while (Breadcrumb.Count > pageCountToLeaveOpen)
+            {
+                var currentPage = Breadcrumb.Pop();
+                if(currentPage == null)
+                    continue;
+                var exitResult = await currentPage.TryCloseAsync(MenuNavDirection.Back_FORCED);
+                if (exitResult == false) return false;
+            }
+            return true;
+        }
+        
+        public virtual bool BackOutAllPages(int pageCountToLeaveOpen = 0)
+        {
+            while (Breadcrumb.Count > pageCountToLeaveOpen)
+            {
+                var currentPage = Breadcrumb.Pop();
+                if(currentPage == null)
+                    continue;
+                var exitResult = currentPage.TryClose(MenuNavDirection.Back_FORCED);
+                if (exitResult == false) return false;
+            }
+            return true;
+        }
+        
+        public virtual async UniTask<bool> TryForwardPageAsync(MenuPage nextPage)
         {
             if (Breadcrumb.Count > 0)
             {
@@ -67,7 +125,7 @@ namespace CT.MenuNav
             return true;
         }
 
-        public virtual async UniTask<bool> TryBackPage()
+        public virtual async UniTask<bool> TryBackPageAsync()
         {
             if (Breadcrumb.Count == 0)
                 return false;
@@ -102,10 +160,10 @@ namespace CT.MenuNav
             return true;
         }
 
-        public virtual async UniTask<bool> TrySwapPage(MenuPage swapToPage)
+        public virtual async UniTask<bool> TrySwapPageAsync(MenuPage swapToPage)
         {
             if (Breadcrumb.Count == 0)
-                return await TryForwardPage(swapToPage);
+                return await TryForwardPageAsync(swapToPage);
 
             if (Breadcrumb.TryPeek(out MenuPage currentPage))
             {
@@ -145,6 +203,11 @@ namespace CT.MenuNav
         public virtual int GetPageCount()
         {
             return Breadcrumb.Count;
+        }
+
+        public virtual List<MenuPage> GetBreadcrumbList()
+        {
+            return Breadcrumb.ToList();
         }
 
         public virtual void PrintBreadcrumbs()

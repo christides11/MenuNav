@@ -41,6 +41,15 @@ namespace CT.MenuNav
         [SerializeField] protected MenuPageState pageState;
         [NonSerialized] public MenuManager currentManager;
         
+        public virtual bool TryOpen(MenuNavDirection direction, int pageCount)
+        {
+            PageState = MenuPageState.Opening;
+            gameObject.SetActive(true);
+            PageCount = pageCount;
+            PageState = MenuPageState.Opened;
+            return true;
+        }
+        
         public virtual async UniTask<bool> TryOpenAsync(MenuNavDirection direction, int pageCount)
         {
             PageState = MenuPageState.Opening;
@@ -50,6 +59,15 @@ namespace CT.MenuNav
             return true;
         }
 
+        public virtual bool TryClose(MenuNavDirection direction)
+        {
+            PageState = MenuPageState.Closing;
+            ResetBreadcrumbSections();
+            gameObject.SetActive(false);
+            PageState = MenuPageState.Closed;
+            return true;
+        }
+        
         public virtual async UniTask<bool> TryCloseAsync(MenuNavDirection direction)
         {
             PageState = MenuPageState.Closing;
@@ -58,7 +76,7 @@ namespace CT.MenuNav
             PageState = MenuPageState.Closed;
             return true;
         }
-
+        
         public virtual void ResetPage()
         {
             while (Breadcrumb.Count > 0)
