@@ -3,7 +3,7 @@ using System;
 namespace CT.MenuNav
 {
     [Serializable]
-    public enum MenuPageSectionState
+    public enum MenuViewState
     {
         Closed,
         Closing,

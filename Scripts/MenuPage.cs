@@ -1,183 +1,277 @@
 using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
-using UnityEngine.Events;
 
 namespace CT.MenuNav
 {
-    public class MenuPage : MonoBehaviour
+    public class MenuPage : MenuView
     {
-        public MenuPageState PageState
+        public MenuViewState PageState
         {
             get => pageState;
-            protected set
-            {
-                pageState = value;
-                switch (pageState)
-                {
-                    case MenuPageState.Closed:
-                        OnClosed?.Invoke();
-                        break;
-                    case MenuPageState.Opened:
-                        OnOpened?.Invoke();
-                        break;
-                    case MenuPageState.Closing:
-                        OnClosing?.Invoke();
-                        break;
-                    case MenuPageState.Opening:
-                        OnOpening?.Invoke();
-                        break;
-                }
-            }
+            protected set => SetViewState(value);
+        }
+
+        public override MenuViewState ViewState => pageState;
+        protected override MenuViewState StoredViewState
+        {
+            get => pageState;
+            set => pageState = value;
         }
 
         public int PageCount { get; protected set; }
-        
-        public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed;
-        
-        [NonSerialized] protected Stack<MenuPageSection> Breadcrumb = new Stack<MenuPageSection>();
-        [NonSerialized] protected HashSet<MenuPageSection> AssignedSections = new HashSet<MenuPageSection>();
-        [SerializeField] protected MenuPageState pageState;
+        public bool IsNavigatingSections { get; protected set; }
+
+        [NonSerialized] protected NavigationStack<MenuPageSection> Breadcrumb = new();
+        [SerializeField] protected MenuViewState pageState;
         [NonSerialized] public MenuManager currentManager;
-        
-        public virtual bool TryOpen(MenuNavDirection direction, int pageCount)
+
+        protected override void SetDepth(int depth)
         {
-            PageState = MenuPageState.Opening;
-            gameObject.SetActive(true);
-            PageCount = pageCount;
-            PageState = MenuPageState.Opened;
-            return true;
-        }
-        
-        public virtual async UniTask<bool> TryOpenAsync(MenuNavDirection direction, int pageCount)
-        {
-            PageState = MenuPageState.Opening;
-            gameObject.SetActive(true);
-            PageCount = pageCount;
-            PageState = MenuPageState.Opened;
-            return true;
+            PageCount = depth;
         }
 
-        public virtual bool TryClose(MenuNavDirection direction)
+        protected override async UniTask<bool> PrepareCloseAsync(MenuNavContext context)
         {
-            PageState = MenuPageState.Closing;
-            ResetBreadcrumbSections();
-            gameObject.SetActive(false);
-            PageState = MenuPageState.Closed;
-            return true;
+            var sectionCloseContext = new MenuNavContext(
+                MenuNavDirection.Back, isForced: true, isInstant: context.IsInstant,
+                depth: Breadcrumb.Count, fromPage: context.FromPage, toPage: context.ToPage,
+                cancellationToken: context.CancellationToken);
+            return await RunSectionNavigationAsync(
+                () => CloseSectionHistoryAsync(sectionCloseContext),
+                context.CancellationToken);
         }
-        
-        public virtual async UniTask<bool> TryCloseAsync(MenuNavDirection direction)
+
+        public override void ForceClose()
         {
-            PageState = MenuPageState.Closing;
-            ResetBreadcrumbSections();
-            gameObject.SetActive(false);
-            PageState = MenuPageState.Closed;
-            return true;
+            ForceResetSectionHistory();
+            base.ForceClose();
         }
-        
+
         public virtual void ResetPage()
+        {
+            ForceResetSectionHistory();
+        }
+
+        #region Sections
+        protected virtual async UniTask<bool> CloseSectionHistoryAsync(MenuNavContext context)
         {
             while (Breadcrumb.Count > 0)
             {
-                MenuPageSection closing = Breadcrumb.Pop();
-                _ = closing.TryExitSection(MenuNavDirection.Back_FORCED);
-                closing.ResetSection();
+                var transaction = Breadcrumb.BeginTransaction();
+                var section = transaction.Pop();
+                if (section != null && section.SectionState != MenuViewState.Closed)
+                {
+                    var closeResult = await section.TryExitSection(
+                        context.WithDepth(Breadcrumb.Count - 1));
+                    if (closeResult == false)
+                        return false;
+                }
+
+                transaction.Commit();
+                if (section != null)
+                {
+                    section.ResetSection();
+                    section.AssignedPage = null;
+                }
             }
+
+            return true;
         }
 
-        public virtual void ExitAllAssignedSections()
+        protected virtual void ForceResetSectionHistory()
         {
-            foreach(var section in AssignedSections)
-                section.TryExitSection(MenuNavDirection.Back_FORCED);
-        }
-
-        public virtual void ResetAllAssignedSections()
-        {
-            foreach(var section in AssignedSections)
-                section.ResetSection();
-        }
-
-        public virtual void ResetBreadcrumbSections()
-        {
-            foreach (MenuPageSection section in Breadcrumb)
+            var resetSections = new HashSet<MenuPageSection>();
+            while (Breadcrumb.Count > 0)
             {
-                section.ResetSection();
+                var section = Breadcrumb.Pop();
+                if (section != null && resetSections.Add(section))
+                    section.ForceCloseAndReset();
             }
         }
 
         // Section Navigation
-        public virtual async UniTask<bool> TryAdvanceSection(MenuPageSection nextSection)
+        public virtual UniTask<bool> TryAdvanceSectionAsync(
+            MenuPageSection nextSection,
+            CancellationToken cancellationToken = default)
         {
-            if (Breadcrumb.Count > 0)
+            cancellationToken = ResolveSectionCancellationToken(cancellationToken);
+            return RunSectionNavigationAsync(
+                () => TryAdvanceSectionInternalAsync(nextSection, cancellationToken),
+                cancellationToken);
+        }
+
+        protected virtual async UniTask<bool> TryAdvanceSectionInternalAsync(
+            MenuPageSection nextSection,
+            CancellationToken cancellationToken)
+        {
+            var transaction = Breadcrumb.BeginTransaction();
+            var currentSection = transaction.Current;
+            transaction.Push(nextSection);
+
+            if (currentSection != null)
             {
-                var currentSection = Breadcrumb.Peek();
-                if (currentSection != null)
-                {
-                    var exitResult = await currentSection.TryExitSection(MenuNavDirection.Advance);
-                    if (exitResult == false)
-                        return false;
-                }
+                var exitResult = await currentSection.TryExitSection(new MenuNavContext(
+                    MenuNavDirection.Advance, depth: Breadcrumb.Count - 1,
+                    cancellationToken: cancellationToken));
+                if (exitResult == false)
+                    return false;
             }
 
             if (nextSection == null)
             {
-                Breadcrumb.Push(null);
+                transaction.Commit();
                 return true;
             }
 
-            nextSection.assignedPage = this;
-            var enterResult = await nextSection.TryEnterSection(MenuNavDirection.Advance);
+            var previousPage = nextSection.AssignedPage;
+            nextSection.AssignedPage = this;
+            bool enterResult;
+            try
+            {
+                enterResult = await nextSection.TryEnterSection(new MenuNavContext(
+                    MenuNavDirection.Advance, depth: Breadcrumb.Count,
+                    cancellationToken: cancellationToken));
+            }
+            catch
+            {
+                nextSection.AssignedPage = previousPage;
+                await TryRestoreSectionAsync(currentSection, new MenuNavContext(
+                    MenuNavDirection.Back, isForced: true, depth: Breadcrumb.Count - 1));
+                throw;
+            }
             if (enterResult == false)
             {
-                var oldSection = Breadcrumb.Peek();
-                if (oldSection != null)
-                {
-                    oldSection.assignedPage = this;
-                    await oldSection.TryEnterSection(MenuNavDirection.Back_FORCED);
-                }
+                nextSection.AssignedPage = previousPage;
+                await TryRestoreSectionAsync(currentSection, new MenuNavContext(
+                    MenuNavDirection.Back, isForced: true, depth: Breadcrumb.Count - 1));
+
                 return false;
             }
-            Breadcrumb.Push(nextSection);
+
+            transaction.Commit();
             return true;
         }
 
-        public virtual async UniTask<bool> TryExitCurrentSection()
+        public virtual UniTask<bool> TryBackSectionAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken = ResolveSectionCancellationToken(cancellationToken);
+            return RunSectionNavigationAsync(
+                () => TryBackSectionInternalAsync(cancellationToken),
+                cancellationToken);
+        }
+
+        protected virtual async UniTask<bool> TryBackSectionInternalAsync(
+            CancellationToken cancellationToken)
         {
             if (Breadcrumb.Count == 0)
                 return false;
 
-            MenuPageSection currentSection = Breadcrumb.Peek();
+            var transaction = Breadcrumb.BeginTransaction();
+            var currentSection = transaction.Pop();
             if (currentSection != null)
             {
-                var exitResult = await currentSection.TryExitSection(MenuNavDirection.Back);
+                var exitResult = await currentSection.TryExitSection(new MenuNavContext(
+                    MenuNavDirection.Back, depth: Breadcrumb.Count - 1,
+                    cancellationToken: cancellationToken));
                 if (exitResult == false)
                 {
                     return false;
                 }
             }
 
-            Breadcrumb.Pop();
-
-            if (Breadcrumb.Count > 0)
+            if (transaction.Count > 0)
             {
-                MenuPageSection previousSection = Breadcrumb.Peek();
+                var previousSection = transaction.Current;
                 if (previousSection != null)
                 {
-                    previousSection.assignedPage = this;
-                    var returnResult = await previousSection.TryEnterSection(MenuNavDirection.Back);
-                    return returnResult;
+                    previousSection.AssignedPage = this;
+                    bool returnResult;
+                    try
+                    {
+                        returnResult = await previousSection.TryEnterSection(new MenuNavContext(
+                            MenuNavDirection.Back, depth: transaction.Count - 1,
+                            cancellationToken: cancellationToken));
+                    }
+                    catch
+                    {
+                        await TryRestoreSectionAsync(currentSection, new MenuNavContext(
+                            MenuNavDirection.Advance, isForced: true, depth: Breadcrumb.Count - 1));
+                        throw;
+                    }
+                    if (returnResult == false)
+                    {
+                        await TryRestoreSectionAsync(currentSection, new MenuNavContext(
+                            MenuNavDirection.Advance, isForced: true, depth: Breadcrumb.Count - 1));
+                        return false;
+                    }
                 }
             }
 
+            transaction.Commit();
+            if (currentSection != null)
+                currentSection.AssignedPage = null;
+
             return true;
+        }
+
+        protected virtual async UniTask<bool> RunSectionNavigationAsync(
+            Func<UniTask<bool>> operation,
+            CancellationToken cancellationToken)
+        {
+            if (IsNavigatingSections)
+                return false;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            IsNavigatingSections = true;
+
+            try
+            {
+                return await operation();
+            }
+            finally
+            {
+                IsNavigatingSections = false;
+            }
+        }
+
+        protected virtual CancellationToken ResolveSectionCancellationToken(
+            CancellationToken cancellationToken)
+        {
+            return cancellationToken.CanBeCanceled
+                ? cancellationToken
+                : this.GetCancellationTokenOnDestroy();
+        }
+
+        private async UniTask TryRestoreSectionAsync(
+            MenuPageSection section,
+            MenuNavContext context)
+        {
+            if (section == null)
+                return;
+
+            section.AssignedPage = this;
+            try
+            {
+                var restored = await section.TryEnterSection(context);
+                if (restored == false)
+                    Debug.LogError($"Failed to restore menu section {section.name} after a navigation failure.", section);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, section);
+                Debug.LogError($"Failed to restore menu section {section.name} after a navigation failure.", section);
+            }
         }
 
         public virtual MenuPageSection GetCurrentSection()
         {
             if (Breadcrumb.Count == 0) return null;
-            return Breadcrumb.Peek();
+            return Breadcrumb.Current;
         }
+        #endregion
     }
 }

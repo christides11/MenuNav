@@ -7,7 +7,7 @@ namespace CT.MenuNav
 {
     public class MenuPageSection : MonoBehaviour
     {
-        public MenuPageSectionState SectionState
+        public MenuViewState SectionState
         {
             get => sectionState;
             protected set
@@ -15,16 +15,16 @@ namespace CT.MenuNav
                 sectionState = value;
                 switch (sectionState)
                 {
-                    case MenuPageSectionState.Closed:
+                    case MenuViewState.Closed:
                         OnClosed?.Invoke();
                         break;
-                    case MenuPageSectionState.Opened:
+                    case MenuViewState.Opened:
                         OnOpened?.Invoke();
                         break;
-                    case MenuPageSectionState.Closing:
+                    case MenuViewState.Closing:
                         OnClosing?.Invoke();
                         break;
-                    case MenuPageSectionState.Opening:
+                    case MenuViewState.Opening:
                         OnOpening?.Invoke();
                         break;
                 }
@@ -32,21 +32,77 @@ namespace CT.MenuNav
         }
         
         public UnityEvent OnOpening, OnOpened, OnClosing, OnClosed, OnReset;
-        [SerializeField] private MenuPageSectionState sectionState = MenuPageSectionState.Closed;
-        [NonSerialized] public MenuPage assignedPage;
+        [SerializeField] private MenuViewState sectionState = MenuViewState.Closed;
+        public MenuPage AssignedPage { get; internal set; }
         
-        public virtual UniTask<bool> TryEnterSection(MenuNavDirection direction)
+        public virtual async UniTask<bool> TryEnterSection(MenuNavContext context)
         {
-            SectionState = MenuPageSectionState.Opening;
-            SectionState = MenuPageSectionState.Opened;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            if (SectionState is MenuViewState.Opening or MenuViewState.Opened)
+                return false;
+
+            SectionState = MenuViewState.Opening;
+
+            try
+            {
+                if (!await OnEnterSectionAsync(context))
+                    return false;
+
+                context.CancellationToken.ThrowIfCancellationRequested();
+                SectionState = MenuViewState.Opened;
+                return true;
+            }
+            finally
+            {
+                if (SectionState == MenuViewState.Opening)
+                    SectionState = MenuViewState.Closed;
+            }
+        }
+
+        protected virtual UniTask<bool> OnEnterSectionAsync(MenuNavContext context)
+        {
             return UniTask.FromResult(true);
         }
-        
-        public virtual UniTask<bool> TryExitSection(MenuNavDirection direction)
+
+        public virtual async UniTask<bool> TryExitSection(MenuNavContext context)
         {
-            SectionState = MenuPageSectionState.Closing;
-            SectionState = MenuPageSectionState.Closed;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            if (SectionState is MenuViewState.Closing or MenuViewState.Closed)
+                return false;
+
+            SectionState = MenuViewState.Closing;
+
+            try
+            {
+                if (!await OnExitSectionAsync(context))
+                    return false;
+
+                context.CancellationToken.ThrowIfCancellationRequested();
+                SectionState = MenuViewState.Closed;
+                return true;
+            }
+            finally
+            {
+                if (SectionState == MenuViewState.Closing)
+                    SectionState = MenuViewState.Opened;
+            }
+        }
+
+        protected virtual UniTask<bool> OnExitSectionAsync(MenuNavContext context)
+        {
             return UniTask.FromResult(true);
+        }
+
+        public virtual void ForceCloseAndReset()
+        {
+            if (SectionState != MenuViewState.Closed)
+            {
+                SectionState = MenuViewState.Closing;
+                SectionState = MenuViewState.Closed;
+            }
+
+            ResetSection();
+            AssignedPage = null;
         }
         
         public virtual void ResetSection()
