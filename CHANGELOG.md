@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/christides11/MenuNav/compare/v2.4.0...v3.0.0) (2026-08-19)
+
+
+### Features
+
+* Functionally improvements ([fc9b419](https://github.com/christides11/MenuNav/commit/fc9b419a2f9bc31909464d8fdb9880189bb56632))
+
+
+### BREAKING CHANGES
+
+* Various changes to improve system
+
 # [2.4.0](https://github.com/christides11/MenuNav/compare/v2.3.1...v2.4.0) (2026-05-19)
 
 
