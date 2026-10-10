@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/christides11/MenuNav/compare/v3.0.0...v3.0.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* Fixed false return when menu already opened/closed ([4e2254a](https://github.com/christides11/MenuNav/commit/4e2254a4e9306932338776bdeada0052868c016f))
+
 # [3.0.0](https://github.com/christides11/MenuNav/compare/v2.4.0...v3.0.0) (2026-08-19)
 
 
