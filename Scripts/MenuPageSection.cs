@@ -39,7 +39,7 @@ namespace CT.MenuNav
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             if (SectionState is MenuViewState.Opening or MenuViewState.Opened)
-                return false;
+                return true;
 
             SectionState = MenuViewState.Opening;
 
@@ -68,7 +68,7 @@ namespace CT.MenuNav
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             if (SectionState is MenuViewState.Closing or MenuViewState.Closed)
-                return false;
+                return true;
 
             SectionState = MenuViewState.Closing;
 

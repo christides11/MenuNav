@@ -53,7 +53,7 @@ namespace CT.MenuNav
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             if (ViewState is MenuViewState.Opening or MenuViewState.Opened)
-                return false;
+                return true;
 
             SetInputEnabled(true);
             SetViewState(MenuViewState.Opening);
@@ -84,7 +84,7 @@ namespace CT.MenuNav
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             if (ViewState is MenuViewState.Closing or MenuViewState.Closed)
-                return false;
+                return true;
 
             var wasInputEnabled = IsInputEnabled;
             SetInputEnabled(false);
@@ -134,6 +134,16 @@ namespace CT.MenuNav
             SetInputEnabled(false);
             gameObject.SetActive(false);
             SetViewState(MenuViewState.Closed);
+        }
+
+        public bool IsOpenedOrOpening()
+        {
+            return ViewState == MenuViewState.Opened || ViewState == MenuViewState.Opening;
+        }
+
+        public bool IsClosedOrClosing()
+        {
+            return ViewState == MenuViewState.Closed || ViewState == MenuViewState.Closing;
         }
     }
 }
